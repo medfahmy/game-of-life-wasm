@@ -1,4 +1,4 @@
-import { Cell, Grid } from "game-of-life-wasm";
+import { Grid } from "game-of-life-wasm";
 import { memory } from "game-of-life-wasm/game_of_life_wasm_bg";
 
 const CELL_SIZE = 5;
@@ -7,6 +7,7 @@ const DEAD_COLOR = "#fff";
 const ALIVE_COLOR = "#000";
 
 const grid = Grid.new();
+
 const width = grid.width();
 const height = grid.height();
 
@@ -37,9 +38,15 @@ function getIndex(row, col) {
     return row * width + col;
 }
 
+function bitIsSet(n, arr) {
+    const byte = Math.floor(n / 8);
+    const mask = 1 << (n % 8);
+    return (arr[byte] & mask) === mask;
+}
+
 function drawCells() {
     const cellsPtr = grid.cells();
-    const cells = new Uint8Array(memory.buffer, cellsPtr, width * height);
+    const cells = new Uint8Array(memory.buffer, cellsPtr, width * height / 8);
 
     ctx.beginPath();
 
@@ -47,7 +54,8 @@ function drawCells() {
         for (let col = 0; col < width; col++) {
             const idx = getIndex(row, col);
 
-            ctx.fillStyle = cells[idx] === Cell.Dead ? DEAD_COLOR : ALIVE_COLOR;
+            // ctx.fillStyle = cells[idx] === Cell.Dead ? DEAD_COLOR : ALIVE_COLOR;
+            ctx.fillStyle = bitIsSet(idx, cells) ? DEAD_COLOR : ALIVE_COLOR;
 
             ctx.fillRect(
                 col * (CELL_SIZE + 1) + 1,
@@ -61,8 +69,11 @@ function drawCells() {
     ctx.stroke();
 }
 
+console.log()
+
 function renderLoop() {
     grid.tick();
+
 
     drawGrid();
     drawCells();

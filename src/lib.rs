@@ -1,6 +1,7 @@
 mod utils;
 
 use wasm_bindgen::prelude::*;
+use fixedbitset::FixedBitSet;
 
 #[wasm_bindgen]
 #[repr(u8)]
@@ -14,7 +15,7 @@ pub enum Cell {
 pub struct Grid {
     width: u32,
     height: u32,
-    cells: Vec<Cell>,
+    cells: FixedBitSet,
 }
 
 impl Grid {
@@ -55,14 +56,14 @@ impl Grid {
                 let live_neighbors = self.live_neighbor_count(row, col);
 
                 let next_cell = match (cell, live_neighbors) {
-                    (Cell::Alive, x) if x < 2 => Cell::Dead,
-                    (Cell::Alive, x) if x == 2 || x == 3 => Cell::Alive,
-                    (Cell::Alive, x) if x > 3 => Cell::Dead,
-                    (Cell::Dead, 3) => Cell::Alive,
+                    (true, x) if x < 2 => false,
+                    (true, x) if x > 3 => false,
+                    (true, 2) | (true, 3) => true,
+                    (false, 3) => true,
                     (cell, _) => cell,
                 };
 
-                next[index] = next_cell;
+                next.set(self.get_index(row, col), next_cell);
             }
         }
 
@@ -77,28 +78,25 @@ impl Grid {
         self.height
     }
 
-    pub fn cells(&self) -> *const Cell {
-        self.cells.as_ptr()
+    pub fn cells(&self) -> *const usize {
+        self.cells.as_slice().as_ptr()
     }
 }
 
-impl std::fmt::Display for Grid {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for row in self.cells.as_slice().chunks(self.width as usize) {
-            for &cell in row {
-                let symbol = match cell {
-                    Cell::Dead => '◻',
-                    Cell::Alive => '◼',
-                };
-                write!(f, "{} ", symbol)?;
-            }
+// impl std::fmt::Display for Grid {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         for row in self.cells.as_slice().chunks(self.width as usize) {
+//             for &cell in row {
+//                 let symbol = if cell { '◼' } else { '◻' };
+//                 write!(f, "{} ", symbol)?;
+//             }
 
-            write!(f, "\n")?;
-        }
+//             write!(f, "\n")?;
+//         }
 
-        Ok(())
-    }
-}
+//         Ok(())
+//     }
+// }
 
 #[wasm_bindgen]
 impl Grid {
@@ -106,15 +104,13 @@ impl Grid {
         let width = 64;
         let height = 64;
 
-        let cells = (0..width * height)
-            .map(|i| {
-                if i % 2 == 0 || i % 7 == 0 {
-                    Cell::Alive
-                } else {
-                    Cell::Dead
-                }
-            })
-            .collect();
+        let size = (width * height) as usize;
+        let mut cells = FixedBitSet::with_capacity(size);
+
+        for i in 0..size {
+            // cells.set(i, js_sys::Math::random() < 0.5);
+            cells.set(i, i % 2 == 0 || i % 7 == 0);
+        }
 
         Self {
             width,
@@ -123,7 +119,7 @@ impl Grid {
         }
     }
 
-    pub fn render(&self) -> String {
-        self.to_string()
-    }
+    // pub fn render(&self) -> String {
+    //     self.to_string()
+    // }
 }
